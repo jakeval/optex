@@ -15,6 +15,9 @@ import contextlib
 import dataclasses
 
 
+# TODO(@jakeval): Remove the debugging name attribute from the Node class.
+
+
 _DRY_RUN: bool = False
 """Used to create static graphs by replacing computation with no-ops.
 
@@ -81,7 +84,10 @@ def generate_static_graph(
         expected_params = inspect.signature(process).parameters
         dummy_params = [Artifact(None) for _ in expected_params]
         outputs = process(*dummy_params)
-        roots = find_roots(outputs)
+        if isinstance(outputs, Tuple):
+            roots = find_roots(outputs)
+        else:
+            roots = find_roots([outputs])
         return Graph(roots, outputs)
 
 
@@ -130,6 +136,7 @@ class Artifact(Node):
         super().__init__()
         self._data: Any = data
         self._entered_scope: Optional[Process] = None
+        self.name = None
 
     def _add_child(self, child: Process, role: str) -> None:
         """Add an edge connecting this Artifact to a Process which consumes it
@@ -202,6 +209,7 @@ class Process(Node):
         super().__init__()
         self._transformation = transformation
         self.child_processes = []
+        self.name = transformation.__name__
 
     def _add_child(self, child: Artifact, role: str) -> None:
         """Add an edge connecting this Process to an Artifact it produces as a
