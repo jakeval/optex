@@ -200,7 +200,7 @@ class Process(Node):
 
     def __init__(self, transformation: Callable[..., Any]):
         super().__init__()
-        self.transformation = transformation
+        self._transformation = transformation
         self.child_processes = []
 
     def _add_child(self, child: Artifact, role: str) -> None:
