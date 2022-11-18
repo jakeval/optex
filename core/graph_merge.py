@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, Mapping, Any
 from core import computation_graph
 
 
@@ -113,3 +113,31 @@ def make_expanded_graph_copy(
 
     outputs = [new_nodes[old_output] for old_output in graph.outputs]
     return computation_graph.EdgeGraph.from_output_artifacts(outputs)
+
+
+def compute_artifact_ancestors(artifact, artifact_values):
+    # artifacts only have 1 parent
+    process = list(artifact.parents.values())[0]
+    process_args = {}
+    for arg_name, parent_artifact in process.parents.items():
+        if parent_artifact not in artifact_values:
+            artifact_values = compute_artifact_ancestors(
+                parent_artifact, artifact_values
+            )
+        process_args[arg_name] = artifact_values[parent_artifact]
+    artifact_values[artifact] = process._transformation(**process_args)
+    return artifact_values
+
+
+def execute_graph(
+    graph: computation_graph.Graph,
+    inputs: Mapping[computation_graph.Artifact, Any],
+) -> Mapping[computation_graph.Artifact, Any]:
+    output_values = {}
+    artifact_values = inputs.copy()
+
+    for output in graph.outputs:
+        artifact_values = compute_artifact_ancestors(output, artifact_values)
+        output_values[output] = artifact_values[output]
+
+    return output_values
