@@ -67,6 +67,25 @@ def find_roots(leafs: Sequence[Artifact]) -> Sequence[Artifact]:
     return list(roots)
 
 
+def get_edge_graph(graph: Graph) -> EdgeGraph:
+    """Lists a graph's edges and returns them in a shallow copy of the
+    graph."""
+    open_set = set(graph.inputs)
+    explored_set = set()
+    edges = []
+    while open_set:
+        node = open_set.pop()
+        if node in explored_set:
+            continue
+        explored_set.add(node)
+        for role, child in node.children.items():
+            edges.append((role, node, child))
+            open_set.add(child)
+
+    return EdgeGraph(graph.inputs, graph.outputs, edges)
+
+
+# TODO(@jakeval): This function should be part of the Graph class.
 def generate_static_graph(
     process: OptexProcess.transform,
 ) -> Graph:
@@ -106,6 +125,69 @@ class Graph:
 
     inputs: Sequence[Artifact]
     outputs: Sequence[Artifact]
+
+    @staticmethod
+    def from_process(
+        process: OptexProcess.transform,
+    ) -> Graph:
+        """Generates a computation graph for an optex process without executing
+        the computation. Typically the process used is a function decorated
+        with optex_composition which makes calls to many other functions
+        decorated with optex_process.
+
+        Args:
+            process: The optex process to generate a graph for.
+
+        Returns:
+            A Graph object storing a list of the graph input Artifacts and
+            output Artifacts.
+        """
+        return generate_static_graph(process)
+
+
+@dataclasses.dataclass
+class EdgeGraph(Graph):
+    """Stores the inputs, outputs, and edges of a computation graph.
+
+    Edges are tuples of the format (role, parent node, child node). The edge
+    list does not edges from subgraphs contained in composition processes --
+    composition processes replace the subgraphs they contain.
+
+    Attributes:
+        inputs: The top-level parentless Artifacts that are the graph root.
+        outputs: The Artifacts that are returned by the top-level optex
+            process containing the computation graph. These are not necessarily
+            leaves of the computation graph.
+        edges: A list of graph edges where each edge is a tuple of (role,
+            parent node, child node).
+    """
+
+    edges: Sequence[str, Node, Node]
+
+    @staticmethod
+    def from_process(
+        process: OptexProcess.transform,
+    ) -> EdgeGraph:
+        """Generates a computation graph for an optex process without executing
+        the computation. Typically the process used is a function decorated
+        with optex_composition which makes calls to many other functions
+        decorated with optex_process.
+
+        Args:
+            process: The optex process to generate a graph for.
+
+        Returns:
+            A Graph object storing a list of the graph input Artifacts and
+            output Artifacts.
+        """
+        return get_edge_graph(generate_static_graph(process))
+
+    @staticmethod
+    def from_output_artifacts(outputs: Sequence[Artifact]) -> EdgeGraph:
+        """Returns an EdgeGraph from the leaves (outputs) of a computation
+        graph."""
+        inputs = find_roots(outputs)
+        return get_edge_graph(Graph(inputs, outputs))
 
 
 class Node:
