@@ -144,18 +144,18 @@ class ImagePipeline3:
     @computation_graph.optex_composition("transform_return")
     def transform(df):
         df.name = "input"
-        resized_df = resize_image(
-            df,
-            computation_graph.Artifact(100),
-            computation_graph.Artifact(200),
-        )
-        resized_df.name = "resize_out"
-        rotated_df = rotate_image(resized_df, computation_graph.Artifact(100))
+        rotated_df = rotate_image(df, computation_graph.Artifact(100))
         rotated_df.name = "rotate_out"
         recolor_df = recolor_image(rotated_df)
         recolor_df.name = "recolor_df"
         blur_df = blur_image(recolor_df)
         blur_df.name = "blur_df"
+        resized_df = resize_image(
+            blur_df,
+            computation_graph.Artifact(100),
+            computation_graph.Artifact(200),
+        )
+        resized_df.name = "resize_out"
         return blur_df
 
 
