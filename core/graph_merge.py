@@ -111,7 +111,11 @@ def make_expanded_graph_copy(
             open_set.add(new_child)
         explored_set.add(new_node)
 
-    outputs = [new_nodes[old_output] for old_output in graph.outputs]
+    try:
+        outputs = [new_nodes[old_output] for old_output in graph.outputs]
+    except TypeError:
+        outputs = [new_nodes[graph.outputs]]
+
     return computation_graph.EdgeGraph.from_output_artifacts(outputs)
 
 

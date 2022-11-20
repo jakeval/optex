@@ -55,22 +55,24 @@ class ImagePipeline1:
     @staticmethod
     @computation_graph.optex_composition("transform_return")
     def transform(df, width, height):
-        df.name = "input"
+        width.name = 'width'
+        height.name = 'height'
+        df.name = 'input_data'
         resized_df = resize_image(
             df,
             width,
             height,
         )
-        return resized_df
+        #return resized_df
         resized_df.name = "resize_out"
         rotated_df = rotate_image(
-            computation_graph.Artifact(resized_df),
+            resized_df,
             computation_graph.Artifact(100),
         )
         rotated_df.name = "rotate_out"
-        blur_df = blur_image(computation_graph.Artifact(rotated_df))
+        blur_df = blur_image(rotated_df)
         blur_df.name = "blur_df"
-        recolor_df = recolor_image(computation_graph.Artifact(blur_df))
+        recolor_df = recolor_image(blur_df)
         recolor_df.name = "recolor_df"
         return recolor_df
 
@@ -90,7 +92,7 @@ class ImagePipeline2:
                 computation_graph.Artifact(epoch_count),
             )
             batch_output = ImagePipeline2.transform(
-                computation_graph.Artifact(image_df)
+                image_df
             )
             epoch_count = epoch_count + 1
         return batch_output
@@ -133,13 +135,13 @@ class ImagePipeline3:
                 computation_graph.Artifact(epoch_count),
             )
             batch_output = ImagePipeline3.transform(
-                computation_graph.Artifact(image_df)
+                image_df
             )
             epoch_count = epoch_count + 1
         return batch_output
 
     @staticmethod
-    @computation_graph.optex_composition(["transform_return"])
+    @computation_graph.optex_composition("transform_return")
     def transform(df):
         df.name = "input"
         resized_df = resize_image(
@@ -154,38 +156,50 @@ class ImagePipeline3:
         recolor_df.name = "recolor_df"
         blur_df = blur_image(recolor_df)
         blur_df.name = "blur_df"
-        return [blur_df]
+        return blur_df
 
 
 if __name__ == "__main__":
 
-    # g = computation_graph.Graph.from_process(ImagePipeline1.transform)  # generate a static graph
-    # mergeable_g = graph_merge.make_expanded_graph_copy(g)  # remove compositions and write in edge-list format
-    # print("The (pretty-printed) edge list is:")
-    # print ([(parent.name, child.name) for role, parent, child in mergeable_g.edges])
+    pipeline_1_graph = computation_graph.Graph.from_process(ImagePipeline1.transform)  # generate a static graph
+    pipeline_1_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_1_graph)  # remove compositions and write in edge-list format
+    print("The (pretty-printed) edge list for Pipeline 1 is:")
+    print ([(parent.name, child.name) for role, parent, child in pipeline_1_mergeable_g.edges])
+
+    pipeline_2_graph = computation_graph.Graph.from_process(ImagePipeline2.transform)  # generate a static graph
+    pipeline_2_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_2_graph)  # remove compositions and write in edge-list format
+    print("The (pretty-printed) edge list for Pipeline 2 is:")
+    print ([(parent.name, child.name) for role, parent, child in pipeline_2_mergeable_g.edges])
+
+    pipeline_3_graph = computation_graph.Graph.from_process(ImagePipeline3.transform)  # generate a static graph
+    pipeline_3_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_3_graph)  # remove compositions and write in edge-list format
+    print("The (pretty-printed) edge list for Pipeline 3 is:")
+    print ([(parent.name, child.name) for role, parent, child in pipeline_3_mergeable_g.edges])
 
     # insert merging code here
 
     # benchmarks without merging
     start_time_img_pipeline_1 = time.time()
-    img_pipeline_1 = ImagePipeline1(200, 3).run_pipline()
+    img_pipeline_1 = ImagePipeline1(200,3).run_pipline()
     total_time_img_pipeline_1 = get_time_elapsed(start_time_img_pipeline_1)
     print(
         "Total time for Pipeline 1 without merging: ",
         total_time_img_pipeline_1,
+        ' seconds',
     )
-    if False:
-        start_time_img_pipeline_2 = time.time()
-        img_pipeline_2 = ImagePipeline2(200, 3).run_pipline()
-        total_time_img_pipeline_2 = get_time_elapsed(start_time_img_pipeline_2)
-        print(
-            "Total time for Pipeline 2 without merging: ",
-            total_time_img_pipeline_2,
-        )
-        start_time_img_pipeline_3 = time.time()
-        img_pipeline_3 = ImagePipeline1(200, 3).run_pipline()
-        total_time_img_pipeline_3 = get_time_elapsed(start_time_img_pipeline_3)
-        print(
-            "Total time for Pipeline 3 without merging: ",
-            total_time_img_pipeline_3,
-        )
+    start_time_img_pipeline_2 = time.time()
+    img_pipeline_2 = ImagePipeline2(200, 3).run_pipline()
+    total_time_img_pipeline_2 = get_time_elapsed(start_time_img_pipeline_2)
+    print(
+        "Total time for Pipeline 2 without merging: ",
+        total_time_img_pipeline_2,
+        ' seconds',
+    )
+    start_time_img_pipeline_3 = time.time()
+    img_pipeline_3 = ImagePipeline1(200, 3).run_pipline()
+    total_time_img_pipeline_3 = get_time_elapsed(start_time_img_pipeline_3)
+    print(
+        "Total time for Pipeline 3 without merging: ",
+        total_time_img_pipeline_3,
+        ' seconds',
+    )

@@ -24,7 +24,7 @@ def rotate_image(df, angle):
     Args:
         df: The dataframe containing Pillow Images.
         angle: Integer representing the desired angle to rotate."""
-    return df._data.map(lambda img: img.rotate(angle=angle))
+    return df.map(lambda img: img.rotate(angle=angle))
 
 
 @computation_graph.optex_process("blur_return")
@@ -35,7 +35,7 @@ def blur_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
-    return df._data.map(lambda img: img.filter(ImageFilter.BLUR))
+    return df.map(lambda img: img.filter(ImageFilter.BLUR))
 
 
 @computation_graph.optex_process("recolor_return")
@@ -46,4 +46,4 @@ def recolor_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
-    return df._data.map(lambda img: img.convert(mode="CMYK"))
+    return df.map(lambda img: img.convert(mode="CMYK"))
