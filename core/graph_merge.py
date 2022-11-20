@@ -121,6 +121,21 @@ def make_expanded_graph_copy(
 
 
 def compute_artifact_ancestors(artifact, artifact_values):
+    """Recursively computes the value of an artifact and its ancestors given
+    sufficient values for its ancestors.
+
+    This is used to lazily compute an artifact given values for its root
+    ancestors. The function will recursively evaluate all of the necessary
+    ancestor values starting from the root ancestors until it computes the
+    target artifact value.
+
+    Args:
+        artifact: The artifact whose value and ancestors to compute.
+        artifact_values: The values of the artifact's root ancestors.
+
+    Returns:
+        The values of the artifact and all its ancestors.
+    """
     # artifacts only have 1 parent
     process = list(artifact.parents.values())[0]
     process_args = {}
@@ -138,6 +153,15 @@ def execute_graph(
     graph: computation_graph.Graph,
     inputs: Mapping[computation_graph.Artifact, Any],
 ) -> Mapping[computation_graph.Artifact, Any]:
+    """Executes a statically-generated computation graph on some inputs.
+
+    graph: The graph to execute.
+    inputs: A mapping from input Artifact to the value it should take on in
+        the computation.
+
+    Returns:
+        A mapping from output Artifact to the value it computes to.
+    """
     output_values = {}
     artifact_values = inputs.copy()
 
