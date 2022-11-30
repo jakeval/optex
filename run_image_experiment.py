@@ -2,6 +2,7 @@ from pyspark.sql import SparkSession
 from core import computation_graph, graph_merge
 from image_utilities.image_transformations import *
 from image_utilities.load_images import load_imagenet_data
+from visualize_graph.network_graph import Network_Graph
 import time
 
 
@@ -165,16 +166,22 @@ if __name__ == "__main__":
     pipeline_1_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_1_graph)  # remove compositions and write in edge-list format
     print("The (pretty-printed) edge list for Pipeline 1 is:")
     print ([(parent.name, child.name) for role, parent, child in pipeline_1_mergeable_g.edges])
+    pipeline_1_graph_visual = Network_Graph(pipeline_1_mergeable_g)
+    pipeline_1_graph_visual.save_graph('pipeline_1.html')
 
     pipeline_2_graph = computation_graph.Graph.from_process(ImagePipeline2.transform)  # generate a static graph
     pipeline_2_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_2_graph)  # remove compositions and write in edge-list format
     print("The (pretty-printed) edge list for Pipeline 2 is:")
     print ([(parent.name, child.name) for role, parent, child in pipeline_2_mergeable_g.edges])
+    pipeline_2_graph_visual = Network_Graph(pipeline_2_mergeable_g)
+    pipeline_2_graph_visual.save_graph('pipeline_2.html')
 
     pipeline_3_graph = computation_graph.Graph.from_process(ImagePipeline3.transform)  # generate a static graph
     pipeline_3_mergeable_g = graph_merge.make_expanded_graph_copy(pipeline_3_graph)  # remove compositions and write in edge-list format
     print("The (pretty-printed) edge list for Pipeline 3 is:")
     print ([(parent.name, child.name) for role, parent, child in pipeline_3_mergeable_g.edges])
+    pipeline_3_graph_visual = Network_Graph(pipeline_3_mergeable_g)
+    pipeline_3_graph_visual.save_graph('pipeline_3.html')
 
     # insert merging code here
 
