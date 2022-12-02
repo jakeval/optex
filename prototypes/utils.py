@@ -6,11 +6,11 @@ def topologicalSort(totalVertices, prerequisites):
             graph[edge[0]] = [edge[1]]
         else:
             graph[edge[0]].append(edge[1])
-    
+
     # print(graph)
 
     n = totalVertices
-    indegree = [0]*n
+    indegree = [0] * n
     answer = []
     for key in graph:
         for nbrs in graph[key]:
@@ -20,8 +20,8 @@ def topologicalSort(totalVertices, prerequisites):
         if indegree[i] == 0:
             queue.append((i, 0))
     count = 0
-    
-    while(len(queue) > 0):
+
+    while len(queue) > 0:
         rem = queue.pop(0)
         answer.append((rem[0], rem[1]))
         if rem[0] in graph:
@@ -29,7 +29,7 @@ def topologicalSort(totalVertices, prerequisites):
                 indegree[child] -= 1
                 if indegree[child] == 0:
                     queue.append((child, rem[1] + 1))
-        
+
     print(answer)
     if count == n:
         return True
@@ -37,9 +37,8 @@ def topologicalSort(totalVertices, prerequisites):
         return False
 
 
-
 totalVertices = 5
-prereqs = [[1,4],[2,4],[3,1],[3,2]]
+prereqs = [[1, 4], [2, 4], [3, 1], [3, 2]]
 print(topologicalSort(totalVertices, prereqs))
 
 
@@ -63,7 +62,7 @@ def commonLineage(graph1, graph2):
         levelCheck = 0
         for j in range(ptr2, len(graph2)):
             if graph2[j][0] in graph1Set:
-                levelCheck+=1
+                levelCheck += 1
                 answer.append(graph2[j][0])
         if levelCheck == 0:
             break
@@ -71,12 +70,14 @@ def commonLineage(graph1, graph2):
         l2 += 1
     print(answer)
 
+
 def checkLevel(graph):
     levelCount = 0
-    for i in range(0, len(graph)-1):
-        if graph[i][1] != graph[i+1][1]:
+    for i in range(0, len(graph) - 1):
+        if graph[i][1] != graph[i + 1][1]:
             levelCount += 1
     return levelCount + 1
+
 
 # graph = [(0, 0), (3, 0), (1, 1), (2, 1), (4, 2), (5, 3)]
 # print(checkLevel(graph))

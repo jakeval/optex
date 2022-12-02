@@ -3,7 +3,7 @@ from PIL import ImageFilter
 
 
 @computation_graph.optex_process("resize_return")
-def resize_image(df, width, height):
+def resize_image(df):
     """Resizes a Pillow image to the indicated dimensions.
 
     Use the Pillow library to resize an image.
@@ -12,11 +12,11 @@ def resize_image(df, width, height):
         df: The dataframe containing Pillow Images.
         width: Integer representing the desired width.
         height: Integer representing the desired height."""
-    return df.map(lambda img: img.resize((width, height)))
+    return df.map(lambda img: img.resize((100, 200)))
 
 
 @computation_graph.optex_process("rotate_return")
-def rotate_image(df, angle):
+def rotate_image(df):
     """Rotates a Pillow image to the indicated degree.
 
     Use the Pillow library to rotate an image.
@@ -24,7 +24,7 @@ def rotate_image(df, angle):
     Args:
         df: The dataframe containing Pillow Images.
         angle: Integer representing the desired angle to rotate."""
-    return df.map(lambda img: img.rotate(angle=angle))
+    return df.map(lambda img: img.rotate(angle=100))
 
 
 @computation_graph.optex_process("blur_return")
