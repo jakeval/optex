@@ -40,18 +40,25 @@ class PipelineRunner:
         batch_index = 0
         spark_session = computation_graph.Artifact(self.spark_session)
         batch_size = computation_graph.Artifact(self.batch_size)
+        execution_times = {}
+        for pipeline in pipelines:
+            execution_times[pipeline] = 0
         while batch_index < self.number_batches:
             batch_index_artifact = computation_graph.Artifact(batch_index)
             for pipeline in pipelines:
+                start_time = time.time()
                 pipeline.run_batch(
                     spark_session, batch_size, batch_index_artifact
                 )
-                batch_index = batch_index + 1
+                execution_times[pipeline] += get_time_elapsed(start_time)
+            batch_index = batch_index + 1
+        return execution_times
 
-    def run_graphs(self, *graphs):
+    def run_graphs(self, *graphs, output_filename='merged_graphs.html'):
         batch_index = 0
         spark_session_artifact = computation_graph.Artifact(self.spark_session)
         batch_size_artifact = computation_graph.Artifact(self.batch_size)
+        execution_time = 0
         while batch_index < self.number_batches:
             batch_index_artifact = computation_graph.Artifact(batch_index)
 
@@ -89,6 +96,7 @@ class PipelineRunner:
             graph, merged_inputs, _ = graph_merge.merge_graphs(
                 graphs, inputs, name="merged_graph"
             )
+            Network_Graph(graph).save_graph(output_filename)
             # These are the arguments used to call the merged graph with.
             # Because the merged graph has fewer nodes, the inputs are
             # simpler.
@@ -112,9 +120,11 @@ class PipelineRunner:
                     ),
                 },
             )
-
+            start_time = time.time()
             graph_merge.execute_graph(graph, inputs)
+            execution_time += get_time_elapsed(start_time)
             batch_index += 1
+        return execution_time
 
 
 class ImagePipeline1:
@@ -246,13 +256,28 @@ class ImagePipeline3:
 
 if __name__ == "__main__":
 
-    batch_size = 5  # suuuuper tiny just for testing :)
-    number_batches = 1
+    batch_size = 100 #should not exceed 200
+    number_batches = 3
     runner = PipelineRunner(batch_size, number_batches)
 
     print("START UNMERGED")
-    runner.run_pipelines(ImagePipeline1, ImagePipeline2, ImagePipeline3)
+    unmerged_execution_times = runner.run_pipelines(ImagePipeline1, ImagePipeline2, ImagePipeline3)
     print("DONE")
+    print(
+        "Total time for Pipeline 1 without merging: ",
+        unmerged_execution_times[ImagePipeline1],
+        " seconds",
+    )
+    print(
+        "Total time for Pipeline 2 without merging: ",
+        unmerged_execution_times[ImagePipeline2],
+        " seconds",
+    )
+    print(
+        "Total time for Pipeline 3 without merging: ",
+        unmerged_execution_times[ImagePipeline3],
+        " seconds",
+    )
 
     pipeline_1_graph = graph_merge.make_expanded_graph_copy(
         computation_graph.Graph.from_process(
@@ -271,83 +296,29 @@ if __name__ == "__main__":
     )
 
     print("RUN MERGED")
-    runner.run_graphs(pipeline_1_graph, pipeline_2_graph, pipeline_3_graph)
+    merged_execution_time = runner.run_graphs(pipeline_1_graph, pipeline_2_graph, pipeline_3_graph, output_filename='merge_3_pipelines.html')
     print("DONE!")
+    print(
+        "Total time for all three merged pipelines: ",
+        merged_execution_time,
+        " seconds",
+    )
 
-    print("DO ALL THE OTHER STUFF I DIDN'T READ CAUSE IM SLEEPY")
-
-    pipeline_1_graph = computation_graph.Graph.from_process(
-        ImagePipeline1.transform, "pipeline_1"
-    )  # generate a static graph
+    #create visuals for each individual pipeline
     pipeline_1_mergeable_g = graph_merge.make_expanded_graph_copy(
         pipeline_1_graph
     )  # remove compositions and write in edge-list format
-    print("The (pretty-printed) edge list for Pipeline 1 is:")
-    print(
-        [
-            (parent.name, child.name)
-            for role, parent, child in pipeline_1_mergeable_g.edges
-        ]
-    )
     pipeline_1_graph_visual = Network_Graph(pipeline_1_mergeable_g)
     pipeline_1_graph_visual.save_graph("pipeline_1.html")
 
-    pipeline_2_graph = computation_graph.Graph.from_process(
-        ImagePipeline2.transform
-    )  # generate a static graph
     pipeline_2_mergeable_g = graph_merge.make_expanded_graph_copy(
         pipeline_2_graph
     )  # remove compositions and write in edge-list format
-    print("The (pretty-printed) edge list for Pipeline 2 is:")
-    print(
-        [
-            (parent.name, child.name)
-            for role, parent, child in pipeline_2_mergeable_g.edges
-        ]
-    )
     pipeline_2_graph_visual = Network_Graph(pipeline_2_mergeable_g)
     pipeline_2_graph_visual.save_graph("pipeline_2.html")
 
-    pipeline_3_graph = computation_graph.Graph.from_process(
-        ImagePipeline3.transform
-    )  # generate a static graph
     pipeline_3_mergeable_g = graph_merge.make_expanded_graph_copy(
         pipeline_3_graph
     )  # remove compositions and write in edge-list format
-    print("The (pretty-printed) edge list for Pipeline 3 is:")
-    print(
-        [
-            (parent.name, child.name)
-            for role, parent, child in pipeline_3_mergeable_g.edges
-        ]
-    )
     pipeline_3_graph_visual = Network_Graph(pipeline_3_mergeable_g)
     pipeline_3_graph_visual.save_graph("pipeline_3.html")
-
-    # insert merging code here
-
-    # benchmarks without merging
-    start_time_img_pipeline_1 = time.time()
-    img_pipeline_1 = ImagePipeline1(200, 3).run_pipline()
-    total_time_img_pipeline_1 = get_time_elapsed(start_time_img_pipeline_1)
-    print(
-        "Total time for Pipeline 1 without merging: ",
-        total_time_img_pipeline_1,
-        " seconds",
-    )
-    start_time_img_pipeline_2 = time.time()
-    img_pipeline_2 = ImagePipeline2(200, 3).run_pipline()
-    total_time_img_pipeline_2 = get_time_elapsed(start_time_img_pipeline_2)
-    print(
-        "Total time for Pipeline 2 without merging: ",
-        total_time_img_pipeline_2,
-        " seconds",
-    )
-    start_time_img_pipeline_3 = time.time()
-    img_pipeline_3 = ImagePipeline3(200, 3).run_pipline()
-    total_time_img_pipeline_3 = get_time_elapsed(start_time_img_pipeline_3)
-    print(
-        "Total time for Pipeline 3 without merging: ",
-        total_time_img_pipeline_3,
-        " seconds",
-    )
