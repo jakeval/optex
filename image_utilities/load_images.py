@@ -16,11 +16,12 @@ def convert_spark_to_pil(img):
 
     Args:
         img: The byte object representing an image."""
-    mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
+    # mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
+    mode = "RGB"
     image = Image.frombytes(
         mode=mode,
-        data=bytes(img.image.data),
-        size=[img.image.width, img.image.height],
+        data=bytes(img),
+        size=[200, 200],
     )
     # fix blue tint
     B, G, R = np.asarray(image).T
@@ -89,13 +90,15 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
     dummy_image.show()
     sc = spark_session.sparkContext
     rdd = sc.parallelize([dummy_image.tobytes(), dummy_image.tobytes()])
-    row = Row('image')
+    row = Row("image")
     image_df = rdd.map(row).toDF()
     # image_df = spark_session.createDataFrame(
     #     data=tensor_data, schema=['image']
     # )
     print(image_df)
-    converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x['image']))
+    converted_image_df = image_df.rdd.map(
+        lambda x: convert_spark_to_pil(x["image"])
+    )
     for ele in converted_image_df.collect():
         print(ele)
 

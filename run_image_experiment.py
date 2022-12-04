@@ -12,10 +12,12 @@ def start_spark_session():
     Start a new Spark Session with 1 local core"""
     spark = (
         SparkSession.builder.master("local[1]")
-            .config("spark.executor.memory", "7g")
-            .config("spark.driver.memory", "5g")
-            .config("spark.memory.offHeap.enabled",True)
-            .config("spark.memory.offHeap.size","6g").appName("optex").getOrCreate()
+        .config("spark.executor.memory", "7g")
+        .config("spark.driver.memory", "5g")
+        .config("spark.memory.offHeap.enabled", True)
+        .config("spark.memory.offHeap.size", "6g")
+        .appName("optex")
+        .getOrCreate()
     )
 
     return spark
@@ -58,7 +60,7 @@ class PipelineRunner:
             batch_index = batch_index + 1
         return execution_times
 
-    def run_graphs(self, *graphs, output_filename='merged_graphs.html'):
+    def run_graphs(self, *graphs, output_filename="merged_graphs.html"):
         batch_index = 0
         spark_session_artifact = computation_graph.Artifact(self.spark_session)
         batch_size_artifact = computation_graph.Artifact(self.batch_size)
@@ -258,14 +260,15 @@ class ImagePipeline3:
         return collect(blur_df)
 
 
-if __name__ == "__main__":
-
-    batch_size = 4 #should not exceed 200
+def main():
+    batch_size = 4  # should not exceed 200
     number_batches = 3
     runner = PipelineRunner(batch_size, number_batches)
 
     print("START UNMERGED")
-    unmerged_execution_times = runner.run_pipelines(ImagePipeline1, ImagePipeline2, ImagePipeline3)
+    unmerged_execution_times = runner.run_pipelines(
+        ImagePipeline1, ImagePipeline2, ImagePipeline3
+    )
     print("DONE")
     print(
         "Total time for Pipeline 1 without merging: ",
@@ -300,7 +303,12 @@ if __name__ == "__main__":
     )
 
     print("RUN MERGED")
-    merged_execution_time = runner.run_graphs(pipeline_1_graph, pipeline_2_graph, pipeline_3_graph, output_filename='merge_3_pipelines.html')
+    merged_execution_time = runner.run_graphs(
+        pipeline_1_graph,
+        pipeline_2_graph,
+        pipeline_3_graph,
+        output_filename="merge_3_pipelines.html",
+    )
     print("DONE!")
     print(
         "Total time for all three merged pipelines: ",
@@ -308,7 +316,7 @@ if __name__ == "__main__":
         " seconds",
     )
 
-    #create visuals for each individual pipeline
+    # create visuals for each individual pipeline
     pipeline_1_mergeable_g = graph_merge.make_expanded_graph_copy(
         pipeline_1_graph
     )  # remove compositions and write in edge-list format
@@ -326,3 +334,7 @@ if __name__ == "__main__":
     )  # remove compositions and write in edge-list format
     pipeline_3_graph_visual = Network_Graph(pipeline_3_mergeable_g)
     pipeline_3_graph_visual.save_graph("pipeline_3.html")
+
+
+if __name__ == "__main__":
+    main()
