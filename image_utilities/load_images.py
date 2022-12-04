@@ -80,6 +80,8 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
 
     # finally, convert spark byte image objects to pillow image objects
     converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x))
+    for element in converted_image_df.collect():
+        print(element)
 
     # dummy_image = None
     # with Image.open("image_utilities/lamp.jpg") as im:
