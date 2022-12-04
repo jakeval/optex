@@ -11,7 +11,11 @@ def start_spark_session():
 
     Start a new Spark Session with 1 local core"""
     spark = (
-        SparkSession.builder.master("local[1]").appName("optex").getOrCreate()
+        SparkSession.builder.master("local[1]")
+            .config("spark.executor.memory", "7g")
+            .config("spark.driver.memory", "5g")
+            .config("spark.memory.offHeap.enabled",True)
+            .config("spark.memory.offHeap.size","6g").appName("optex").getOrCreate()
     )
 
     return spark
@@ -167,7 +171,7 @@ class ImagePipeline1:
         blur_df.name = "blur_df"
         recolor_df = recolor_image(blur_df)
         recolor_df.name = "recolor_df"
-        return recolor_df
+        return collect(recolor_df)
 
 
 class ImagePipeline2:
@@ -209,7 +213,7 @@ class ImagePipeline2:
         recolor_df.name = "recolor_df"
         resized2_df = resize_image(recolor_df)
         resized2_df.name = "resize2_out"
-        return resized2_df
+        return collect(resized2_df)
 
 
 class ImagePipeline3:
@@ -251,12 +255,12 @@ class ImagePipeline3:
         blur_df.name = "blur_df"
         resized_df = resize_image(blur_df)
         resized_df.name = "resize_out"
-        return blur_df
+        return collect(blur_df)
 
 
 if __name__ == "__main__":
 
-    batch_size = 100 #should not exceed 200
+    batch_size = 4 #should not exceed 200
     number_batches = 3
     runner = PipelineRunner(batch_size, number_batches)
 

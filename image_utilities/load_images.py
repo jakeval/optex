@@ -3,6 +3,7 @@ import deeplake
 import torchvision.transforms as T
 from core import computation_graph
 import numpy as np
+from pyspark.sql import Row
 
 
 def convert_spark_to_pil(img):
@@ -77,6 +78,25 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
     image_df.printSchema()
 
     # finally, convert spark byte image objects to pillow image objects
-    converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x))
+    # converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x['image']))
+    # for element in converted_image_df.collect():
+    #     print(element)
+
+    dummy_image = None
+    with Image.open("image_utilities/lamp.jpg") as im:
+        dummy_image = im
+        im.show()
+    dummy_image.show()
+    sc = spark_session.sparkContext
+    rdd = sc.parallelize([dummy_image.tobytes(), dummy_image.tobytes()])
+    row = Row('image')
+    image_df = rdd.map(row).toDF()
+    # image_df = spark_session.createDataFrame(
+    #     data=tensor_data, schema=['image']
+    # )
+    print(image_df)
+    converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x['image']))
+    for ele in converted_image_df.collect():
+        print(ele)
 
     return converted_image_df

@@ -12,6 +12,7 @@ def resize_image(df):
         df: The dataframe containing Pillow Images.
         width: Integer representing the desired width.
         height: Integer representing the desired height."""
+    df = df.repartition(2000)
     return df.map(lambda img: img.resize((100, 200)))
 
 
@@ -24,6 +25,7 @@ def rotate_image(df):
     Args:
         df: The dataframe containing Pillow Images.
         angle: Integer representing the desired angle to rotate."""
+    df = df.repartition(2000)
     return df.map(lambda img: img.rotate(angle=100))
 
 
@@ -35,6 +37,7 @@ def blur_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
+    df = df.repartition(2000)
     return df.map(lambda img: img.filter(ImageFilter.BLUR))
 
 
@@ -46,4 +49,17 @@ def recolor_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
+    df = df.repartition(2000)
     return df.map(lambda img: img.convert(mode="CMYK"))
+
+@computation_graph.optex_process("collect_return")
+def collect(df):
+    """Collects the image data from the RDD.
+
+    Use Spark to collect the data and trigger RDD execution.
+
+    Args:
+        df: The dataframe containing Pillow Images."""
+    df = df.repartition(2000)
+    print('repart')
+    return df.collect()
