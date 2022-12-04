@@ -20,7 +20,7 @@ def convert_spark_to_pil(img):
     mode = "RGB"
     image = Image.frombytes(
         mode=mode,
-        data=bytes(img),
+        data=bytes(img.image),
         size=[200, 200],
     )
     # fix blue tint
