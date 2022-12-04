@@ -21,7 +21,7 @@ def convert_spark_to_pil(img):
     image = Image.frombytes(
         mode=mode,
         data=bytes(img.image),
-        size=[200, 200],
+        size=[100, 100],
     )
     # fix blue tint
     B, G, R = np.asarray(image).T
