@@ -262,7 +262,7 @@ class ImagePipeline3:
 
 def main():
     batch_size = 100  # should not exceed 200
-    number_batches = 5
+    number_batches = 10
     runner = PipelineRunner(batch_size, number_batches)
 
     print("START UNMERGED")
