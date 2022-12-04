@@ -16,8 +16,8 @@ def convert_spark_to_pil(img):
 
     Args:
         img: The byte object representing an image."""
-    #mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
-    mode = 'RGB'
+    # mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
+    mode = "RGB"
     image = Image.frombytes(
         mode=mode,
         data=bytes(img),
@@ -103,5 +103,6 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
     #
     # for ele in converted_image_df.collect():
     #     print(len(ele))
+
 
     return converted_image_df
