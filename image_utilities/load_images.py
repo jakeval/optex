@@ -16,11 +16,12 @@ def convert_spark_to_pil(img):
 
     Args:
         img: The byte object representing an image."""
-    mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
+    #mode = "RGBA" if (img.image.nChannels == 4) else "RGB"
+    mode = 'RGB'
     image = Image.frombytes(
         mode=mode,
-        data=bytes(img.image.data),
-        size=[img.image.width, img.image.height],
+        data=bytes(img),
+        size=[200, 200],
     )
     # fix blue tint
     B, G, R = np.asarray(image).T
@@ -78,25 +79,29 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
     image_df.printSchema()
 
     # finally, convert spark byte image objects to pillow image objects
-    # converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x['image']))
-    # for element in converted_image_df.collect():
-    #     print(element)
+    converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x))
+    for element in converted_image_df.collect():
+        print(element)
 
-    dummy_image = None
-    with Image.open("image_utilities/lamp.jpg") as im:
-        dummy_image = im
-        im.show()
-    dummy_image.show()
-    sc = spark_session.sparkContext
-    rdd = sc.parallelize([dummy_image.tobytes(), dummy_image.tobytes()])
-    row = Row('image')
-    image_df = rdd.map(row).toDF()
-    # image_df = spark_session.createDataFrame(
-    #     data=tensor_data, schema=['image']
-    # )
-    print(image_df)
-    converted_image_df = image_df.rdd.map(lambda x: convert_spark_to_pil(x['image']))
-    for ele in converted_image_df.collect():
-        print(ele)
+    # dummy_image = None
+    # with Image.open("image_utilities/lamp.jpg") as im:
+    #     dummy_image = im
+    #     im.show()
+    # dummy_image.show()
+    # sc = spark_session.sparkContext
+    # rdd = sc.parallelize([dummy_image.tobytes(), dummy_image.tobytes()])
+    # row = Row('image')
+    # image_df = rdd.map(row).toDF()
+    # # image_df = spark_session.createDataFrame(
+    # #     data=tensor_data, schema=['image']
+    # # )
+    # print(image_df)
+    # #dummy = convert_spark_to_pil(dummy_image.tobytes())
+    # #dummy.show()
+    # converted_image_df = image_df.select('image').rdd.map(lambda x: convert_spark_to_pil(x)).toDF()
+    # #converted_image_df = image_df.rdd.map(lambda x: x['image'])
+    #
+    # for ele in converted_image_df.collect():
+    #     print(len(ele))
 
     return converted_image_df

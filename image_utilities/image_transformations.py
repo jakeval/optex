@@ -12,8 +12,7 @@ def resize_image(df):
         df: The dataframe containing Pillow Images.
         width: Integer representing the desired width.
         height: Integer representing the desired height."""
-    df = df.repartition(2000)
-    return df.map(lambda img: img.resize((100, 200)))
+    return df.map(lambda img: img.image.resize((100, 200)))
 
 
 @computation_graph.optex_process("rotate_return")
@@ -25,8 +24,7 @@ def rotate_image(df):
     Args:
         df: The dataframe containing Pillow Images.
         angle: Integer representing the desired angle to rotate."""
-    df = df.repartition(2000)
-    return df.map(lambda img: img.rotate(angle=100))
+    return df.map(lambda img: img.image.rotate(angle=100))
 
 
 @computation_graph.optex_process("blur_return")
@@ -37,8 +35,7 @@ def blur_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
-    df = df.repartition(2000)
-    return df.map(lambda img: img.filter(ImageFilter.BLUR))
+    return df.map(lambda img: img.image.filter(ImageFilter.BLUR))
 
 
 @computation_graph.optex_process("recolor_return")
@@ -49,8 +46,7 @@ def recolor_image(df):
 
     Args:
         df: The dataframe containing Pillow Images."""
-    df = df.repartition(2000)
-    return df.map(lambda img: img.convert(mode="CMYK"))
+    return df.map(lambda img: img.image.convert(mode="CMYK"))
 
 @computation_graph.optex_process("collect_return")
 def collect(df):
@@ -61,5 +57,4 @@ def collect(df):
     Args:
         df: The dataframe containing Pillow Images."""
     df = df.repartition(2000)
-    print('repart')
     return df.collect()
