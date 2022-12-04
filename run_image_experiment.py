@@ -261,7 +261,7 @@ class ImagePipeline3:
 
 
 def main():
-    batch_size = 20  # should not exceed 200
+    batch_size = 100  # should not exceed 200
     number_batches = 5
     runner = PipelineRunner(batch_size, number_batches)
 
