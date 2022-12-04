@@ -68,7 +68,7 @@ def load_imagenet_data(spark_session, batch_size, batch_index):
             )
         )
         i = i + 1
-        if i % 100 == 0:
+        if i % 50 == 0:
             print(i)
     df_labels = ["label", "image"]
 
