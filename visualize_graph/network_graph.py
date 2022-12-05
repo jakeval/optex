@@ -14,7 +14,10 @@ class Network_Graph(EdgeGraph):
         nx_graph: NetworkX Object representing the input graph.
         pyvis_graph: PyVis Object representing the input graph."""
 
-    def __init__(self, input_graph: EdgeGraph, notebook=False):
+    def __init__(
+        self, input_graph: EdgeGraph, notebook=False, show_agents: bool = True
+    ):
+        self.show_agents = show_agents
         self.nx_graph = nx.DiGraph()
         self.pyvis_graph = Network(directed=True, notebook=notebook)
         self.convert_graph(input_graph)
@@ -55,16 +58,18 @@ class Network_Graph(EdgeGraph):
                 shape = "dot"
                 if isinstance(parent, Process):
                     shape = "square"
-                self.nx_graph.add_node(
-                    pid, label=f"{parent.name} ({parent.agents})", shape=shape
-                )
+                label = parent.name
+                if parent.agents and self.show_agents:
+                    label += f" ({parent.agents})"
+                self.nx_graph.add_node(pid, label=label, shape=shape)
             if not self.nx_graph.has_node(cid):
                 shape = "dot"
                 if isinstance(child, Process):
                     shape = "square"
-                self.nx_graph.add_node(
-                    cid, label=f"{child.name} ({child.agents})", shape=shape
-                )
+                label = child.name
+                if child.agents and self.show_agents:
+                    label += f" ({child.agents})"
+                self.nx_graph.add_node(cid, label=label, shape=shape)
 
             # add directed edge to the graph
             self.nx_graph.add_edge(pid, cid, label=role)
