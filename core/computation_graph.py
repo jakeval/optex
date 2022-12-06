@@ -13,6 +13,7 @@ from functools import wraps
 import inspect
 import contextlib
 import dataclasses
+import time
 
 
 # TODO(@jakeval): Remove the debugging name attribute from the Node class.
@@ -298,6 +299,7 @@ class Process(Node):
         self.child_processes = []
         self.name = transformation.__name__
         self.returns_indices = None
+        self.execution_time = None
 
     def _add_child(self, child: Artifact, role: str) -> None:
         """Add an edge connecting this Process to an Artifact it produces as a
@@ -404,6 +406,7 @@ def optex_composition(
             *artifact_args: Artifact,
             **artifact_kwargs: Artifact,
         ) -> Union[Artifact, Tuple[Artifact]]:
+            start_time = time.time()
             process = Process(transformation)
             if isinstance(returns, str):
                 process.returns_indices = None
@@ -440,7 +443,6 @@ def optex_composition(
                     artifact._leave_scope()
                     artifact._add_parent(process, returns[i])
                     process._add_child(artifact, returns[i])
-                return results
             else:
                 if not isinstance(results, Artifact):
                     raise ValueError(
@@ -450,7 +452,9 @@ def optex_composition(
                 results._leave_scope()
                 results._add_parent(process, returns)
                 process._add_child(results, returns)
-                return results
+
+            process.execution_time = time.time() - start_time
+            return results
 
         return transformation_as_optex_process
 
@@ -487,6 +491,7 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
         def transformation_as_optex_process(
             *artifact_args: Artifact, **artifact_kwargs: Artifact
         ) -> Union[Artifact, Tuple[Artifact]]:
+            start_time = time.time()
             process = Process(transformation)
             if isinstance(returns, str):
                 process.returns_indices = None
@@ -520,6 +525,7 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
                 else:  # must be a list or sequence of strings
                     results = tuple([None for _ in returns])
 
+            final_output = None
             if isinstance(results, Tuple):
                 artifact_results = []
                 for i, result in enumerate(results):
@@ -527,12 +533,16 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
                     artifact._add_parent(process, returns[i])
                     process._add_child(artifact, returns[i])
                     artifact_results.append(artifact)
-                return artifact_results
+                final_output = artifact_results
             else:
                 artifact = Artifact(results)
                 artifact._add_parent(process, returns)
                 process._add_child(artifact, returns)
-                return artifact
+                final_output = artifact
+
+            end_time = time.time()
+            process.execution_time = end_time - start_time
+            return final_output
 
         return transformation_as_optex_process
 

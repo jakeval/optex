@@ -1,5 +1,6 @@
 from typing import Sequence, Tuple, Mapping, Any
 from core import computation_graph
+import time
 
 
 # TODO(@jakeval): Remove the debugging name attribute from the Node class.
@@ -444,11 +445,15 @@ def compute_artifact_ancestors(artifact, artifact_values):
         process_args[arg_name] = artifact_values[parent_artifact]
     if process.returns_indices:
         index = process.returns_indices[artifact.parent_roles[0]]
+        start_time = time.time()
         artifact_values[artifact] = process._transformation(**process_args)[
             index
         ]
+        process.execution_time = time.time() - start_time
     else:
+        start_time = time.time()
         artifact_values[artifact] = process._transformation(**process_args)
+        process.execution_time = time.time() - start_time
     return artifact_values
 
 
