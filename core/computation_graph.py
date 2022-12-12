@@ -13,6 +13,7 @@ from functools import wraps
 import inspect
 import contextlib
 import dataclasses
+import time
 
 
 # TODO(@jakeval): Remove the debugging name attribute from the Node class.
@@ -59,7 +60,7 @@ def find_roots(leafs: Sequence[Artifact]) -> Sequence[Artifact]:
         if node in explored_set:
             continue
         if node.parents:
-            open_set = open_set.union(node.parents.values())
+            open_set = open_set.union(node.parents)
         else:
             roots.add(node)
         explored_set.add(node)
@@ -78,17 +79,20 @@ def get_edge_graph(graph: Graph) -> EdgeGraph:
         if node in explored_set:
             continue
         explored_set.add(node)
-        for role, child in node.children.items():
+        for child, role in zip(node.children, node.children_roles):
             edges.append((role, node, child))
             open_set.add(child)
 
-    return EdgeGraph(graph.inputs, graph.outputs, edges)
+    return EdgeGraph(
+        inputs=graph.inputs,
+        outputs=graph.outputs,
+        edges=edges,
+        name=graph.name,
+    )
 
 
 # TODO(@jakeval): This function should be part of the Graph class.
-def generate_static_graph(
-    process: OptexProcess.transform,
-) -> Graph:
+def generate_static_graph(process: OptexProcess.transform, name: str) -> Graph:
     """Generates a computation graph for an optex process without executing the
     computation.
 
@@ -107,7 +111,7 @@ def generate_static_graph(
             roots = find_roots(outputs)
         else:
             roots = find_roots([outputs])
-        return Graph(roots, outputs)
+        return Graph(roots, outputs, name)
 
 
 @dataclasses.dataclass
@@ -125,11 +129,10 @@ class Graph:
 
     inputs: Sequence[Artifact]
     outputs: Sequence[Artifact]
+    name: str
 
     @staticmethod
-    def from_process(
-        process: OptexProcess.transform,
-    ) -> Graph:
+    def from_process(process: OptexProcess.transform, name: str) -> Graph:
         """Generates a computation graph for an optex process without executing
         the computation. Typically the process used is a function decorated
         with optex_composition which makes calls to many other functions
@@ -142,7 +145,7 @@ class Graph:
             A Graph object storing a list of the graph input Artifacts and
             output Artifacts.
         """
-        return generate_static_graph(process)
+        return generate_static_graph(process, name)
 
 
 @dataclasses.dataclass
@@ -165,9 +168,7 @@ class EdgeGraph(Graph):
     edges: Sequence[str, Node, Node]
 
     @staticmethod
-    def from_process(
-        process: OptexProcess.transform,
-    ) -> EdgeGraph:
+    def from_process(process: OptexProcess.transform, name: str) -> EdgeGraph:
         """Generates a computation graph for an optex process without executing
         the computation. Typically the process used is a function decorated
         with optex_composition which makes calls to many other functions
@@ -180,14 +181,14 @@ class EdgeGraph(Graph):
             A Graph object storing a list of the graph input Artifacts and
             output Artifacts.
         """
-        return get_edge_graph(generate_static_graph(process))
+        return get_edge_graph(generate_static_graph(process, name))
 
     @staticmethod
-    def from_output_artifacts(outputs: Sequence[Artifact]) -> EdgeGraph:
+    def from_output_artifacts(outputs: Sequence[Artifact], name) -> EdgeGraph:
         """Returns an EdgeGraph from the leaves (outputs) of a computation
         graph."""
         inputs = find_roots(outputs)
-        return get_edge_graph(Graph(inputs, outputs))
+        return get_edge_graph(Graph(inputs, outputs, name))
 
 
 class Node:
@@ -202,8 +203,11 @@ class Node:
     """
 
     def __init__(self):
-        self.parents: Mapping[str, Node] = {}
-        self.children: Mapping[str, Node] = {}
+        self.parents: Sequence[Node] = []
+        self.parent_roles: Sequence[str] = []
+        self.children: Sequence[Node] = []
+        self.children_roles: Sequence[str] = []
+        self.agents: Sequence[str] = []
 
 
 class Artifact(Node):
@@ -218,7 +222,7 @@ class Artifact(Node):
         super().__init__()
         self._data: Any = data
         self._entered_scope: Optional[Process] = None
-        self.name = None
+        self.name = "artifact"
 
     def _add_child(self, child: Process, role: str) -> None:
         """Add an edge connecting this Artifact to a Process which consumes it
@@ -234,7 +238,8 @@ class Artifact(Node):
             role: The name of the function parameter this Artifact is mapped
                 to. This also corresponds to an OPM edge role."""
         if not self._entered_scope:
-            self.children[role] = child
+            self.children.append(child)
+            self.children_roles.append(role)
         else:
             self._entered_scope._add_child_process(child)
 
@@ -248,7 +253,8 @@ class Artifact(Node):
             parent: The Process which creates the artifact.
             role: The name of the function return parameter. This is specified
                 as an argument to the function's optex decorator function."""
-        self.parents[role] = parent
+        self.parents.append(parent)
+        self.parent_roles.append(role)
 
     def _enter_scope(self, process: Process) -> None:
         """Used during graph construction to indicate that this Artifact is the
@@ -271,8 +277,8 @@ class Artifact(Node):
         process that produced it as a parent, leaving only the composition
         process.
         """
-        inner_role = list(self.parents.keys())[0]
-        del self.parents[inner_role]
+        self.parents = []
+        self.parent_roles = []
 
 
 class Process(Node):
@@ -292,6 +298,8 @@ class Process(Node):
         self._transformation = transformation
         self.child_processes = []
         self.name = transformation.__name__
+        self.returns_indices = None
+        self.execution_time = None
 
     def _add_child(self, child: Artifact, role: str) -> None:
         """Add an edge connecting this Process to an Artifact it produces as a
@@ -309,7 +317,8 @@ class Process(Node):
             role: The OPM role of the generated Artifact. This corresponds to
                 the paramter name specified by the `returns` argument of the
                 optex decorator functions."""
-        self.children[role] = child
+        self.children.append(child)
+        self.children_roles.append(role)
 
     def _add_parent(self, parent: Artifact, role: str) -> None:
         """Add an edge connecting this Process to an Artifact it consumes as an
@@ -323,7 +332,8 @@ class Process(Node):
             role: The OPM role of the consumed Artifact. This corresponds to
                 the paramter name for the Artifact in the wrapped
                 transformation function."""
-        self.parents[role] = parent
+        self.parents.append(parent)
+        self.parent_roles.append(role)
 
     def _add_child_process(self, process: Process) -> None:
         """Add an edge connecting this Process to a Process it triggers the
@@ -396,7 +406,14 @@ def optex_composition(
             *artifact_args: Artifact,
             **artifact_kwargs: Artifact,
         ) -> Union[Artifact, Tuple[Artifact]]:
+            start_time = time.time()
             process = Process(transformation)
+            if isinstance(returns, str):
+                process.returns_indices = None
+            else:
+                process.returns_indices = dict(
+                    [(role, i) for i, role in enumerate(returns)]
+                )
             bound_args = inspect.Signature.from_callable(transformation).bind(
                 *artifact_args, **artifact_kwargs
             )
@@ -426,7 +443,6 @@ def optex_composition(
                     artifact._leave_scope()
                     artifact._add_parent(process, returns[i])
                     process._add_child(artifact, returns[i])
-                return results
             else:
                 if not isinstance(results, Artifact):
                     raise ValueError(
@@ -436,7 +452,9 @@ def optex_composition(
                 results._leave_scope()
                 results._add_parent(process, returns)
                 process._add_child(results, returns)
-                return results
+
+            process.execution_time = time.time() - start_time
+            return results
 
         return transformation_as_optex_process
 
@@ -473,7 +491,14 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
         def transformation_as_optex_process(
             *artifact_args: Artifact, **artifact_kwargs: Artifact
         ) -> Union[Artifact, Tuple[Artifact]]:
+            start_time = time.time()
             process = Process(transformation)
+            if isinstance(returns, str):
+                process.returns_indices = None
+            else:
+                process.returns_indices = dict(
+                    [(role, i) for i, role in enumerate(returns)]
+                )
             bound_args = inspect.Signature.from_callable(transformation).bind(
                 *artifact_args, **artifact_kwargs
             )
@@ -498,8 +523,9 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
                 if isinstance(returns, str):
                     results = None
                 else:  # must be a list or sequence of strings
-                    results = [None for _ in returns]
+                    results = tuple([None for _ in returns])
 
+            final_output = None
             if isinstance(results, Tuple):
                 artifact_results = []
                 for i, result in enumerate(results):
@@ -507,12 +533,16 @@ def optex_process(returns: Union[str, Sequence[str]]) -> OptexProcess:
                     artifact._add_parent(process, returns[i])
                     process._add_child(artifact, returns[i])
                     artifact_results.append(artifact)
-                return artifact_results
+                final_output = artifact_results
             else:
                 artifact = Artifact(results)
                 artifact._add_parent(process, returns)
                 process._add_child(artifact, returns)
-                return artifact
+                final_output = artifact
+
+            end_time = time.time()
+            process.execution_time = end_time - start_time
+            return final_output
 
         return transformation_as_optex_process
 
