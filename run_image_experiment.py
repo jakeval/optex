@@ -261,6 +261,63 @@ class ImagePipeline3:
 
 
 def main():
+    ##Experiment 1 with batch size = 100 for 10 batches
+    batch_size = 20  # should not exceed 200
+    number_batches = 5
+    runner = PipelineRunner(batch_size, number_batches)
+
+    print("START UNMERGED")
+    unmerged_execution_times = runner.run_pipelines(
+        ImagePipeline1, ImagePipeline2, ImagePipeline3
+    )
+    print("DONE")
+    print(
+        "Total time for Pipeline 1 without merging: ",
+        unmerged_execution_times[ImagePipeline1],
+        " seconds",
+    )
+    print(
+        "Total time for Pipeline 2 without merging: ",
+        unmerged_execution_times[ImagePipeline2],
+        " seconds",
+    )
+    print(
+        "Total time for Pipeline 3 without merging: ",
+        unmerged_execution_times[ImagePipeline3],
+        " seconds",
+    )
+
+    pipeline_1_graph = graph_merge.make_expanded_graph_copy(
+        computation_graph.Graph.from_process(
+            ImagePipeline1.run_batch, "pipeline_1"
+        )
+    )
+    pipeline_2_graph = graph_merge.make_expanded_graph_copy(
+        computation_graph.Graph.from_process(
+            ImagePipeline2.run_batch, "pipeline_2"
+        )
+    )
+    pipeline_3_graph = graph_merge.make_expanded_graph_copy(
+        computation_graph.Graph.from_process(
+            ImagePipeline3.run_batch, "pipeline_3"
+        )
+    )
+
+    print("RUN MERGED")
+    merged_execution_time = runner.run_graphs(
+        pipeline_1_graph,
+        pipeline_2_graph,
+        pipeline_3_graph,
+        output_filename="merge_3_pipelines.html",
+    )
+    print("DONE!")
+    print(
+        "Total time for all three merged pipelines: ",
+        merged_execution_time,
+        " seconds",
+    )
+
+    ##Experiment 2 with batch size = 100 for 10 batches
     batch_size = 100  # should not exceed 200
     number_batches = 10
     runner = PipelineRunner(batch_size, number_batches)
@@ -316,7 +373,8 @@ def main():
         " seconds",
     )
 
-    # create visuals for each individual pipeline
+
+# create visuals for each individual pipeline
     pipeline_1_mergeable_g = graph_merge.make_expanded_graph_copy(
         pipeline_1_graph
     )  # remove compositions and write in edge-list format
